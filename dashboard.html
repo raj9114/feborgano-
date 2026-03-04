@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Antharam OFM — Operations Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2330;
+    --border: #2d3748;
+    --accent: #4ade80;
+    --accent2: #38bdf8;
+    --accent3: #fb923c;
+    --accent4: #a78bfa;
+    --text: #e2e8f0;
+    --muted: #8892a4;
+    --red: #f87171;
+    --amber: #fbbf24;
+    --green: #4ade80;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  header {
+    background: linear-gradient(135deg, #0d1117 0%, #1a2332 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .logo-icon {
+    width: 42px; height: 42px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .logo-text h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    color: var(--text);
+    letter-spacing: 0.3px;
+  }
+  .logo-text p {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .month-badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  .upload-btn {
+    background: linear-gradient(135deg, var(--accent), #22c55e);
+    color: #0d1117;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 20px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    transition: opacity 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .upload-btn:hover { opacity: 0.85; }
+  #fileInput { display: none; }
+
+  /* DROP OVERLAY */
+  #dropOverlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(13,17,23,0.85);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(6px);
+  }
+  #dropOverlay.active { display: flex; }
+  .drop-box {
+    border: 2px dashed var(--accent);
+    border-radius: 20px;
+    padding: 60px 80px;
+    text-align: center;
+    color: var(--accent);
+    font-size: 24px;
+    font-family: 'Playfair Display', serif;
+  }
+  .drop-box p { font-size: 14px; color: var(--muted); margin-top: 12px; font-family: 'DM Sans', sans-serif; }
+
+  /* LANDING */
+  #landing {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 82px);
+    gap: 32px;
+    padding: 40px;
+  }
+  .landing-icon {
+    font-size: 72px;
+    animation: float 3s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-12px); }
+  }
+  .landing-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 36px;
+    text-align: center;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .landing-sub { color: var(--muted); text-align: center; max-width: 440px; line-height: 1.7; }
+  .landing-cta {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #0d1117;
+    border: none;
+    border-radius: 12px;
+    padding: 14px 36px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: transform 0.2s;
+  }
+  .landing-cta:hover { transform: scale(1.04); }
+  .supported-sheets {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 600px;
+  }
+  .sheet-pill {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* DASHBOARD */
+  #dashboard { display: none; padding: 28px 32px; }
+
+  /* NAV TABS */
+  .nav-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 6px;
+    flex-wrap: wrap;
+  }
+  .tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tab-btn:hover { color: var(--text); background: var(--surface2); }
+  .tab-btn.active {
+    background: linear-gradient(135deg, rgba(74,222,128,0.15), rgba(56,189,248,0.1));
+    color: var(--accent);
+    border: 1px solid rgba(74,222,128,0.3);
+  }
+
+  /* PANELS */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* KPI GRID */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+  .kpi-card:hover { transform: translateY(-2px); border-color: rgba(74,222,128,0.4); }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--card-accent, var(--accent));
+  }
+  .kpi-icon { font-size: 24px; margin-bottom: 10px; }
+  .kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .kpi-value { font-size: 28px; font-weight: 700; font-family: 'Playfair Display', serif; }
+  .kpi-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .kpi-status { 
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 6px;
+  }
+  .status-green { background: rgba(74,222,128,0.15); color: var(--green); }
+  .status-amber { background: rgba(251,191,36,0.15); color: var(--amber); }
+  .status-red { background: rgba(248,113,113,0.15); color: var(--red); }
+
+  /* CARDS */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 20px;
+    margin-bottom: 28px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title::before {
+    content: '';
+    width: 3px; height: 14px;
+    background: var(--accent);
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  canvas { max-height: 220px; }
+
+  /* TABLE */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .data-table th {
+    background: var(--surface2);
+    padding: 10px 14px;
+    text-align: left;
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-weight: 600;
+  }
+  .data-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(45,55,72,0.5);
+    color: var(--text);
+  }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: var(--surface2); }
+  .table-wrap {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  /* PROGRESS BAR */
+  .progress-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .progress-label { width: 140px; font-size: 13px; color: var(--text); flex-shrink: 0; }
+  .progress-bar-bg {
+    flex: 1;
+    height: 8px;
+    background: var(--surface2);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 1s ease;
+  }
+  .progress-val { width: 50px; text-align: right; font-size: 13px; color: var(--muted); }
+
+  /* SECTION HEADER */
+  .section-header {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    margin-bottom: 20px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-header span {
+    font-size: 13px;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 400;
+  }
+
+  /* FULL WIDTH CARD */
+  .card-full {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px;
+    margin-bottom: 20px;
+  }
+
+  /* METER */
+  .meter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+  }
+  .meter-item {
+    text-align: center;
+    padding: 20px 12px;
+    background: var(--surface2);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+  }
+  .meter-value {
+    font-size: 32px;
+    font-weight: 700;
+    font-family: 'Playfair Display', serif;
+    color: var(--accent);
+  }
+  .meter-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-top: 6px;
+  }
+
+  /* OVERVIEW TILES */
+  .overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  .overview-tile {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .overview-tile:hover { transform: translateY(-3px); border-color: var(--accent); }
+  .overview-tile .tile-icon { font-size: 28px; margin-bottom: 8px; }
+  .overview-tile .tile-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .tile-indicator {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin: 8px auto 0;
+  }
+  .ind-green { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .ind-amber { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+  .ind-red { background: var(--red); box-shadow: 0 0 8px var(--red); }
+
+  @media (max-width: 768px) {
+    header { padding: 14px 18px; }
+    #dashboard { padding: 16px 18px; }
+    .card-grid { grid-template-columns: 1fr; }
+    .nav-tabs { gap: 2px; }
+    .tab-btn { padding: 7px 10px; font-size: 12px; }
+  }
+
+  .fade-in { animation: fadeIn 0.5s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<!-- DROP OVERLAY -->
+<div id="dropOverlay">
+  <div class="drop-box">
+    📂 Drop Excel File Here
+    <p>Release to load your Antharam data</p>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🌿</div>
+    <div class="logo-text">
+      <h1>Antharam OFM</h1>
+      <p>Operations Dashboard · 7 Pillars · 182 Villas</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="month-badge" id="monthBadge">—</div>
+    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+      📂 Load Excel
+    </button>
+    <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="loadFile(this)"/>
+  </div>
+</header>
+
+<!-- LANDING -->
+<div id="landing">
+  <div class="landing-icon">🌿</div>
+  <div class="landing-title">Antharam Operations Dashboard</div>
+  <div class="landing-sub">Drop your monthly Excel backup file to instantly visualize energy, water, manpower, occupancy, waste, farming, and more.</div>
+  <button class="landing-cta" onclick="document.getElementById('fileInput').click()">📂 Load Excel File</button>
+  <div style="color: var(--muted); font-size: 12px; text-align:center;">Reads sheets from your backup file:</div>
+  <div class="supported-sheets">
+    <span class="sheet-pill">⚡ EB (Energy)</span>
+    <span class="sheet-pill">💧 Water Consumption</span>
+    <span class="sheet-pill">👥 Manpower</span>
+    <span class="sheet-pill">🏘️ Occupancy</span>
+    <span class="sheet-pill">🗑️ Waste Management</span>
+    <span class="sheet-pill">🌾 Farming & Vegetables</span>
+    <span class="sheet-pill">💰 P&L</span>
+    <span class="sheet-pill">🔒 Security</span>
+    <span class="sheet-pill">🔧 Critical Equipment</span>
+    <span class="sheet-pill">📋 AMC</span>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+
+  <!-- NAV TABS -->
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="showTab('overview')">📊 Overview</button>
+    <button class="tab-btn" onclick="showTab('energy')">⚡ Energy</button>
+    <button class="tab-btn" onclick="showTab('water')">💧 Water</button>
+    <button class="tab-btn" onclick="showTab('manpower')">👥 Manpower</button>
+    <button class="tab-btn" onclick="showTab('occupancy')">🏘️ Occupancy</button>
+    <button class="tab-btn" onclick="showTab('waste')">🗑️ Waste</button>
+    <button class="tab-btn" onclick="showTab('farming')">🌾 Farming</button>
+    <button class="tab-btn" onclick="showTab('finance')">💰 P&L</button>
+    <button class="tab-btn" onclick="showTab('operations')">🔧 Operations</button>
+  </div>
+
+  <!-- OVERVIEW -->
+  <div class="panel active fade-in" id="tab-overview">
+    <div class="section-header">Executive Overview <span id="overviewMonth"></span></div>
+    <div class="kpi-grid" id="overviewKPIs"></div>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">⚡ Energy — Jan vs Feb</div>
+        <canvas id="chartEnergyOverview"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">💧 Water Sources Comparison</div>
+        <canvas id="chartWaterOverview"></canvas>
+      </div>
+    </div>
+    <div class="card-full">
+      <div class="card-title">👥 Manpower — Attrition Overview</div>
+      <div id="manpowerOverview"></div>
+    </div>
+  </div>
+
+  <!-- ENERGY -->
+  <div class="panel fade-in" id="tab-energy">
+    <div class="section-header">⚡ Energy Performance</div>
+    <div class="kpi-grid" id="energyKPIs"></div>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">Monthly Energy Breakdown</div>
+        <canvas id="chartEnergyBreakdown"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">Solar vs Grid — Jan vs Feb</div>
+        <canvas id="chartSolarGrid"></canvas>
+      </div>
+    </div>
+    <div class="card-full">
+      <div class="card-title">Detailed Energy Table</div>
+      <div class="table-wrap" id="energyTable"></div>
+    </div>
+  </div>
+
+  <!-- WATER -->
+  <div class="panel fade-in" id="tab-water">
+    <div class="section-header">💧 Water Performance</div>
+    <div class="kpi-grid" id="waterKPIs"></div>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">Water Source Distribution — Feb</div>
+        <canvas id="chartWaterPie"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">Source Comparison Jan vs Feb</div>
+        <canvas id="chartWaterBar"></canvas>
+      </div>
+    </div>
+    <div class="card-full">
+      <div class="card-title">Water Consumption Detail</div>
+      <div class="table-wrap" id="waterTable"></div>
+    </div>
+  </div>
+
+  <!-- MANPOWER -->
+  <div class="panel fade-in" id="tab-manpower">
+    <div class="section-header">👥 Manpower & Attrition</div>
+    <div class="kpi-grid" id="manpowerKPIs"></div>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">Staff Headcount by Category</div>
+        <canvas id="chartManpowerBar"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">Attrition Rate by Category (%)</div>
+        <canvas id="chartAttrition"></canvas>
+      </div>
+    </div>
+    <div class="card-full">
+      <div class="card-title">Manpower Detail Table</div>
+      <div class="table-wrap" id="manpowerTable"></div>
+    </div>
+  </div>
+
+  <!-- OCCUPANCY -->
+  <div class="panel fade-in" id="tab-occupancy">
+    <div class="section-header">🏘️ Villa Occupancy</div>
+    <div class="kpi-grid" id="occupancyKPIs"></div>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">Occupancy by Cluster</div>
+        <canvas id="chartOccupancy"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">Registered vs Occupied</div>
+        <canvas id="chartRegVsOcc"></canvas>
+      </div>
+    </div>
+    <div class="card-full">
+      <div class="card-title">Cluster-wise Occupancy Detail</div>
+      <div class="table-wrap" id="occupancyTable"></div>
+    </div>
+  </div>
+
+  <!-- WASTE -->
+  <div class="panel fade-in" id="tab-waste">
+    <div class="section-header">🗑️ Waste Management</div>
+    <div class="kpi-grid" id="wasteKPIs"></div>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">Waste by Category (kg)</div>
+        <canvas id="chartWastePie"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">Wet Waste Breakdown</div>
+        <canvas id="chartWasteBar"></canvas>
+      </div>
+    </div>
+    <div class="card-full">
+      <div class="card-title">Waste Detail</div>
+      <div id="wasteDetail"></div>
+    </div>
+  </div>
+
+  <!-- FARMING -->
+  <div class="panel fade-in" id="tab-farming">
+    <div class="section-header">🌾 Farming & Food Production</div>
+    <div class="kpi-grid" id="farmingKPIs"></div>
+    <div class="card-full">
+      <div class="card-title">Vegetable Production by Crop (kg)</div>
+      <canvas id="chartFarming" style="max-height: 320px;"></canvas>
+    </div>
+    <div class="card-full">
+      <div class="card-title">Crop Detail Table</div>
+      <div class="table-wrap" id="farmingTable"></div>
+    </div>
+  </div>
+
+  <!-- FINANCE -->
+  <div class="panel fade-in" id="tab-finance">
+    <div class="section-header">💰 P&L Summary — Feb 2026</div>
+    <div class="kpi-grid" id="financeKPIs"></div>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">Income vs Expenses</div>
+        <canvas id="chartPL"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">Expense Breakdown</div>
+        <canvas id="chartExpenses"></canvas>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">Income Sources</div>
+        <div class="table-wrap" id="incomeTable"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Expense Items</div>
+        <div class="table-wrap" id="expenseTable"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPERATIONS -->
+  <div class="panel fade-in" id="tab-operations">
+    <div class="section-header">🔧 Operations — Equipment & Security</div>
+    <div class="kpi-grid" id="opsKPIs"></div>
+    <div class="card-full">
+      <div class="card-title">🔒 Security Report</div>
+      <div id="securityDetail"></div>
+    </div>
+    <div class="card-full">
+      <div class="card-title">⚙️ Critical Equipment Status</div>
+      <div class="table-wrap" id="equipTable"></div>
+    </div>
+    <div class="card-full">
+      <div class="card-title">📋 AMC Contracts</div>
+      <div class="table-wrap" id="amcTable"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let wb = null;
+let charts = {};
+
+// ── DRAG & DROP ──────────────────────────────────
+document.addEventListener('dragover', e => { e.preventDefault(); document.getElementById('dropOverlay').classList.add('active'); });
+document.addEventListener('dragleave', e => { if (!e.relatedTarget) document.getElementById('dropOverlay').classList.remove('active'); });
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  document.getElementById('dropOverlay').classList.remove('active');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+});
+
+function loadFile(input) {
+  if (input.files[0]) processFile(input.files[0]);
+}
+
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+    buildDashboard();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function getSheet(name) {
+  // fuzzy match
+  const key = Object.keys(wb.Sheets).find(s => s.toLowerCase().includes(name.toLowerCase()));
+  if (!key) return [];
+  return XLSX.utils.sheet_to_json(wb.Sheets[key], { header: 1, defval: null });
+}
+
+function num(v) { return typeof v === 'number' ? v : (parseFloat(v) || 0); }
+function fmt(v, dec=0) {
+  if (v === null || v === undefined || v === '') return '—';
+  if (typeof v === 'number') return v.toLocaleString('en-IN', { maximumFractionDigits: dec });
+  return v;
+}
+
+function mkTable(headers, rows) {
+  let h = headers.map(h=>`<th>${h}</th>`).join('');
+  let r = rows.map(row=>`<tr>${row.map(c=>`<td>${fmt(c)}</td>`).join('')}</tr>`).join('');
+  return `<table class="data-table"><thead><tr>${h}</tr></thead><tbody>${r}</tbody></table>`;
+}
+
+function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+function mkChart(id, type, labels, datasets, opts={}) {
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  const defaults = {
+    responsive: true,
+    plugins: { legend: { labels: { color: '#8892a4', font: { family: 'DM Sans', size: 12 } } } },
+    scales: type !== 'pie' && type !== 'doughnut' ? {
+      x: { ticks: { color: '#8892a4' }, grid: { color: 'rgba(45,55,72,0.5)' } },
+      y: { ticks: { color: '#8892a4' }, grid: { color: 'rgba(45,55,72,0.5)' } }
+    } : undefined
+  };
+  charts[id] = new Chart(ctx, { type, data: { labels, datasets }, options: { ...defaults, ...opts } });
+}
+
+const COLORS = ['#4ade80','#38bdf8','#fb923c','#a78bfa','#f472b6','#fbbf24','#34d399','#60a5fa','#f87171','#c084fc'];
+
+// ── BUILD ────────────────────────────────────────
+function buildDashboard() {
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+
+  // guess current month from sheet names or P&L
+  const plRow = getSheet('P&L')[0];
+  const month = plRow ? (plRow[0] || 'FEB-2026') : 'FEB-2026';
+  document.getElementById('monthBadge').textContent = month;
+  document.getElementById('overviewMonth').textContent = '— ' + month;
+
+  buildEnergy();
+  buildWater();
+  buildManpower();
+  buildOccupancy();
+  buildWaste();
+  buildFarming();
+  buildFinance();
+  buildOperations();
+  buildOverview();
+}
+
+// ── ENERGY ──────────────────────────────────────
+function buildEnergy() {
+  const rows = getSheet('EB');
+  if (!rows.length) return;
+
+  // rows: Units | JAN | FEB
+  let data = {};
+  rows.slice(1).forEach(r => { if (r[0]) data[r[0]] = { jan: num(r[1]), feb: num(r[2]) }; });
+
+  const solar_jan = data['Solar Units KWH']?.jan || 0;
+  const solar_feb = data['Solar Units KWH']?.feb || 0;
+  const res_jan = data['Residents KWH']?.jan || 0;
+  const res_feb = data['Residents KWH']?.feb || 0;
+  const club_jan = data['Clubhouse KWH (RH)']?.jan || 0;
+  const club_feb = data['Clubhouse KWH (RH)']?.feb || 0;
+  const common_jan = data['All Common Areas KWH']?.jan || 0;
+  const common_feb = data['All Common Areas KWH']?.feb || 0;
+
+  const total_jan = res_jan + club_jan + common_jan;
+  const total_feb = res_feb + club_feb + common_feb;
+  const solar_pct = total_feb > 0 ? ((solar_feb / (total_feb + solar_feb)) * 100).toFixed(1) : 0;
+
+  document.getElementById('energyKPIs').innerHTML = `
+    <div class="kpi-card" style="--card-accent: #fbbf24">
+      <div class="kpi-icon">⚡</div>
+      <div class="kpi-label">Solar Generation (Feb)</div>
+      <div class="kpi-value">${fmt(solar_feb)}</div>
+      <div class="kpi-sub">kWh · Jan: ${fmt(solar_jan)} kWh</div>
+    </div>
+    <div class="kpi-card" style="--card-accent: #38bdf8">
+      <div class="kpi-icon">🏘️</div>
+      <div class="kpi-label">Resident Consumption (Feb)</div>
+      <div class="kpi-value">${fmt(res_feb)}</div>
+      <div class="kpi-sub">kWh · Jan: ${fmt(res_jan)} kWh</div>
+    </div>
+    <div class="kpi-card" style="--card-accent: #fb923c">
+      <div class="kpi-icon">🏛️</div>
+      <div class="kpi-label">Clubhouse (Feb)</div>
+      <div class="kpi-value">${fmt(club_feb)}</div>
+      <div class="kpi-sub">kWh · Jan: ${fmt(club_jan)} kWh</div>
+    </div>
+    <div class="kpi-card" style="--card-accent: #4ade80">
+      <div class="kpi-icon">☀️</div>
+      <div class="kpi-label">Solar Share (Feb)</div>
+      <div class="kpi-value">${solar_pct}%</div>
+      <div class="kpi-sub">of total generation+consumption</div>
+    </div>
+  `;
+
+  mkChart('chartEnergyBreakdown', 'bar',
+    ['Residents', 'Clubhouse', 'Common Areas'],
+    [
+      { label: 'Jan', data: [res_jan, club_jan, common_jan], backgroundColor: 'rgba(56,189,248,0.7)', borderRadius: 6 },
+      { label: 'Feb', data: [res_feb, club_feb, common_feb], backgroundColor: 'rgba(74,222,128,0.7)', borderRadius: 6 }
+    ]
+  );
+  mkChart('chartSolarGrid', 'bar',
+    ["Jan'26", "Feb'26"],
+    [
+      { label: 'Solar kWh', data: [solar_jan, solar_feb], backgroundColor: 'rgba(251,191,36,0.8)', borderRadius: 6 },
+      { label: 'Grid kWh', data: [total_jan, total_feb], backgroundColor: 'rgba(248,113,113,0.7)', borderRadius: 6 }
+    ]
+  );
+
+  const tableRows = rows.slice(1).filter(r=>r[0]).map(r=>[r[0], fmt(r[1]), fmt(r[2])]);
+  document.getElementById('energyTable').innerHTML = mkTable(['Unit', "Jan'26 (kWh)", "Feb'26 (kWh)"], tableRows);
+}
+
+// ── WATER ────────────────────────────────────────
+function buildWater() {
+  const rows = getSheet('Water Consumption');
+  if (!rows.length) return;
+
+  let sources = [];
+  rows.slice(1).forEach(r => {
+    if (r[0]) sources.push({ name: r[0], jan: num(r[1]), feb: num(r[2]) });
+  });
+
+  const totalFeb = sources.reduce((s,x)=>s+x.feb,0);
+  const totalJan = sources.reduce((s,x)=>s+x.jan,0);
+
+  document.getElementById('waterKPIs').innerHTML = `
+    <div class="kpi-card" style="--card-accent: #38bdf8">
+      <div class="kpi-icon">💧</div>
+      <div class="kpi-label">Total Water (Feb)</div>
+      <div class="kpi-value">${fmt(totalFeb)}</div>
+      <div class="kpi-sub">KL · Jan: ${fmt(totalJan)} KL</div>
+    </div>
+    ${sources.map((s,i) => `
+    <div class="kpi-card" style="--card-accent: ${COLORS[i+1]}">
+      <div class="kpi-icon">🔵</div>
+      <div class="kpi-label">${s.name}</div>
+      <div class="kpi-value">${fmt(s.feb)}</div>
+      <div class="kpi-sub">KL · Jan: ${fmt(s.jan)} KL</div>
+    </div>`).join('')}
+  `;
+
+  const nonZeroFeb = sources.filter(s=>s.feb>0);
+  mkChart('chartWaterPie', 'doughnut',
+    nonZeroFeb.map(s=>s.name),
+    [{ data: nonZeroFeb.map(s=>s.feb), backgroundColor: COLORS, borderWidth: 0 }]
+  );
+  mkChart('chartWaterBar', 'bar',
+    sources.map(s=>s.name),
+    [
+      { label: 'Jan', data: sources.map(s=>s.jan), backgroundColor: 'rgba(56,189,248,0.6)', borderRadius: 6 },
+      { label: 'Feb', data: sources.map(s=>s.feb), backgroundColor: 'rgba(74,222,128,0.7)', borderRadius: 6 }
+    ]
+  );
+
+  document.getElementById('waterTable').innerHTML = mkTable(['Source', "Jan'26 (KL)", "Feb'26 (KL)"], sources.map(s=>[s.name, s.jan, s.feb]));
+}
+
+// ── MANPOWER ────────────────────────────────────
+function buildManpower() {
+  const rows = getSheet('Manpower');
+  if (!rows.length) return;
+
+  // row structure: null | Category | JAN count | JAN left | JAN attr | null | FEB count | FEB left | FEB attr
+  const cats = [];
+  rows.forEach(r => {
+    const cat = r[1];
+    if (cat && typeof cat === 'string' && cat.toLowerCase().includes('staff') || (cat && typeof cat === 'string' && cat.toLowerCase().includes('count') && !cat.includes('TOTAL'))) {
+      cats.push({ name: cat.replace('Actual Count of ',''), jan: num(r[2]), janLeft: num(r[3]), feb: num(r[6]), febLeft: num(r[7]) });
+    }
+  });
+
+  const totFebStaff = cats.reduce((s,x)=>s+x.feb,0);
+  const totFebLeft = cats.reduce((s,x)=>s+x.febLeft,0);
+  const attritionRate = totFebStaff > 0 ? ((totFebLeft/totFebStaff)*100).toFixed(1) : 0;
+
+  document.getElementById('manpowerKPIs').innerHTML = `
+    <div class="kpi-card" style="--card-accent: #a78bfa">
+      <div class="kpi-icon">👥</div>
+      <div class="kpi-label">Total Staff (Feb)</div>
+      <div class="kpi-value">${totFebStaff}</div>
+      <div class="kpi-sub">across all departments</div>
+    </div>
+    <div class="kpi-card" style="--card-accent: #f87171">
+      <div class="kpi-icon">🚶</div>
+      <div class="kpi-label">Staff Left (Feb)</div>
+      <div class="kpi-value">${totFebLeft}</div>
+      <div class="kpi-sub">attrition this month</div>
+    </div>
+    <div class="kpi-card" style="--card-accent: ${parseFloat(attritionRate)>15?'#f87171':'#fbbf24'}">
+      <div class="kpi-icon">📉</div>
+      <div class="kpi-label">Attrition Rate (Feb)</div>
+      <div class="kpi-value">${attritionRate}%</div>
+      <div class="kpi-sub"><span class="kpi-status ${parseFloat(attritionRate)>15?'status-red':'status-amber'}">${parseFloat(attritionRate)>15?'High':'Moderate'}</span></div>
+    </div>
+  `;
+
+  mkChart('chartManpowerBar','bar',
+    cats.map(c=>c.name),
+    [
+      { label: 'Jan Count', data: cats.map(c=>c.jan), backgroundColor: 'rgba(167,139,250,0.6)', borderRadius:6 },
+      { label: 'Feb Count', data: cats.map(c=>c.feb), backgroundColor: 'rgba(74,222,128,0.7)', borderRadius:6 }
+    ]
+  );
+  mkChart('chartAttrition','bar',
+    cats.map(c=>c.name),
+    [
+      { label: 'Jan Left', data: cats.map(c=>c.janLeft), backgroundColor: 'rgba(251,191,36,0.7)', borderRadius:6 },
+      { label: 'Feb Left', data: cats.map(c=>c.febLeft), backgroundColor: 'rgba(248,113,113,0.7)', borderRadius:6 }
+    ]
+  );
+
+  document.getElementById('manpowerTable').innerHTML = mkTable(
+    ['Category', 'Jan Count', 'Jan Left', 'Feb Count', 'Feb Left', 'Feb Attrition%'],
+    cats.map(c=>[c.name, c.jan, c.janLeft, c.feb, c.febLeft, c.feb>0?((c.febLeft/c.feb)*100).toFixed(1)+'%':'—'])
+  );
+
+  // Overview
+  document.getElementById('manpowerOverview').innerHTML = cats.map(c => {
+    const pct = c.feb > 0 ? ((c.febLeft/c.feb)*100) : 0;
+    return `<div class="progress-row">
+      <div class="progress-label">${c.name}</div>
+      <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${Math.min(pct*5,100)}%;background:${pct>15?'#f87171':'#4ade80'}"></div></div>
+      <div class="progress-val">${c.feb} staff</div>
+    </div>`;
+  }).join('');
+}
+
+// ── OCCUPANCY ────────────────────────────────────
+function buildOccupancy() {
+  const rows = getSheet('Occupancy');
+  if (!rows.length) return;
+
+  // Find data rows: Sl.No, Cluster, Total, Registered, Occupied...
+  const dataRows = rows.filter(r => typeof r[0] === 'number');
+
+  const totalVillas = dataRows.reduce((s,r)=>s+num(r[2]),0);
+  const totalOccupied = dataRows.reduce((s,r)=>s+num(r[4]),0);
+  const occPct = totalVillas > 0 ? ((totalOccupied/totalVillas)*100).toFixed(1) : 0;
+
+  document.getElementById('occupancyKPIs').innerHTML = `
+    <div class="kpi-card" style="--card-accent: #4ade80">
+      <div class="kpi-icon">🏠</div>
+      <div class="kpi-label">Total Villas</div>
+      <div class="kpi-value">${totalVillas}</div>
+      <div class="kpi-sub">Phase-01</div>
+    </div>
+    <div class="kpi-card" style="--card-accent: #38bdf8">
+      <div class="kpi-icon">✅</div>
+      <div class="kpi-label">Occupied Villas</div>
+      <div class="kpi-value">${totalOccupied}</div>
+      <div class="kpi-sub">as of last update</div>
+    </div>
+    <div class="kpi-card" style="--card-accent: #fb923c">
+      <div class="kpi-icon">📊</div>
+      <div class="kpi-label">Occupancy Rate</div>
+      <div class="kpi-value">${occPct}%</div>
+      <div class="kpi-sub"><span class="kpi-status ${parseFloat(occPct)>50?'status-green':'status-amber'}">${parseFloat(occPct)>50?'Good':'Growing'}</span></div>
+    </div>
+    <div class="kpi-card" style="--card-accent: #a78bfa">
+      <div class="kpi-icon">🏗️</div>
+      <div class="kpi-label">Vacant Villas</div>
+      <div class="kpi-value">${totalVillas - totalOccupied}</div>
+      <div class="kpi-sub">available</div>
+    </div>
+  `;
+
+  const clusters = dataRows.filter(r=>r[1] && r[1].trim && r[1].trim() !== '');
+  mkChart('chartOccupancy','bar',
+    clusters.map(r=>r[1]),
+    [
+      { label: 'Total', data: clusters.map(r=>num(r[2])), backgroundColor: 'rgba(167,139,250,0.5)', borderRadius:6 },
+      { label: 'Occupied', data: clusters.map(r=>num(r[4])), backgroundColor: 'rgba(74,222,128,0.8)', borderRadius:6 }
+    ]
+  );
+  mkChart('chartRegVsOcc','doughnut',
+    ['Occupied', 'Vacant'],
+    [{ data: [totalOccupied, totalVillas-totalOccupied], backgroundColor: ['#4ade80','#2d3748'], borderWidth:0 }]
+  );
+
+  document.getElementById('occupancyTable').innerHTML = mkTable(
+    ['Cluster','Total Villas','Occupied','Key Handed Over','Interior Started'],
+    clusters.map(r=>[r[1], r[2], r[4], r[6], r[7]])
+  );
+}
+
+// ── WASTE ────────────────────────────────────────
+function buildWaste() {
+  const rows = getSheet('Waste');
+  if (!rows.length) return;
+
+  // Row 4 has values: Veg trim, Food waste(SDP), Veg waste(OFS), Leaves waste, Food(villas), Food(office), Dry(SDP), Dry(OFS), Dry(villas), Dry(common), Non-recyclable
+  const valRow = rows.find(r => typeof r[0] === 'number' && r[0] > 0);
+  if (!valRow) {
+    document.getElementById('wasteKPIs').innerHTML = '<div class="kpi-card"><div class="kpi-label">Data loaded — see table below</div></div>';
+    document.getElementById('wasteDetail').innerHTML = '<p style="color:var(--muted);padding:16px">Waste data parsed from sheet.</p>';
+    return;
+  }
+
+  const wetWaste = num(valRow[0]) + num(valRow[1]) + num(valRow[2]) + num(valRow[3]) + num(valRow[4]) + num(valRow[5]);
+  const dryWaste = num(valRow[6]) + num(valRow[7]) + num(valRow[8]) + num(valRow[9]);
+  const nonRecyclable = num(valRow[10]);
+  const totalWaste = wetWaste + dryWaste + nonRecyclable;
+
+  document.getElementById('wasteKPIs').innerHTML = `
+    <div class="kpi-card" style="--card-accent: #4ade80">
+      <div class="kpi-icon">🌿</div>
+      <div class="kpi-label">Wet Waste</div>
+      <div class="kpi-value">${fmt(wetWaste,1)}</div>
+      <div class="kpi-sub">kg this period</div>
+    </div>
+    <div class="kpi-card" style="--card-accent: #38bdf8">
+      <div class="kpi-icon">♻️</div>
+      <div class="kpi-label">Dry Waste</div>
+      <div class="kpi-value">${fmt(dryWaste,1)}</div>
+      <div class="kpi-sub">kg this period</div>
+    </div>
+    <div class="kpi-card" style="--card-accent: #f87171">
+      <div class="kpi-icon">🗑️</div>
+      <div class="kpi-label">Non-Recyclable</div>
+      <div class="kpi-value">${fmt(nonRecyclable,1)}</div>
+      <div class="kpi-sub">kg this period</div>
+    </div>
+    <div class="kpi-card" style="--card-accent: #fbbf24">
+      <div class="kpi-icon">📦</div>
+      <div class="kpi-label">Total Waste</div>
+      <div class="kpi-value">${fmt(totalWaste,1)}</div>
+      <div class="kpi-sub">kg across all categories</div>
+    </div>
+  `;
+
+  mkChart('chartWastePie','doughnut',
+    ['Wet Waste','Dry Waste','Non-Recyclable'],
+    [{ data: [wetWaste, dryWaste, nonRecyclable], backgroundColor: ['#4ade80','#38bdf8','#f87171'], borderWidth:0 }]
+  );
+
+  mkChart('chartWasteBar','bar',
+    ['Veg Trim\n(SDP)','Food\n(SDP)','Veg\n(OFS)','Leaves\n(OFS)','Food\n(Villas)','Food\n(Office)'],
+    [{ label: 'kg', data: [num(valRow[0]),num(valRow[1]),num(valRow[2]),num(valRow[3]),num(valRow[4]),num(valRow[5])],
+      backgroundColor: COLORS.map(c=>c+'bb'), borderRadius: 6 }]
+  );
+
+  document.getElementById('wasteDetail').innerHTML = `
+    <div class="meter-grid">
+      <div class="meter-item"><div class="meter-value" style="color:#4ade80">${fmt(wetWaste,1)}</div><div class="meter-label">Wet Waste kg</div></div>
+      <div class="meter-item"><div class="meter-value" style="color:#38bdf8">${fmt(dryWaste,1)}</div><div class="meter-label">Dry Waste kg</div></div>
+      <div class="meter-item"><div class="meter-value" style="color:#f87171">${fmt(nonRecyclable,1)}</div><div class="meter-label">Non-Recyclable kg</div></div>
+      <div class="meter-item"><div class="meter-value" style="color:#fbbf24">${totalWaste>0?((wetWaste/totalWaste)*100).toFixed(0):0}%</div><div class="meter-label">Wet Waste Share</div></div>
+    </div>
+  `;
+}
+
+// ── FARMING ─────────────────────────────────────
+function buildFarming() {
+  const rows = getSheet('Vegtables');
+  if (!rows.length) return;
+
+  // Row 0: dates, Row 1: crop names + columns, Data from row 2
+  // Col 0 = crop name, last-3 cols before total = SDP, Dump, OA-Sale
+  // "Total" column seems to be col 22 (index)
+  const crops = [];
+  for (let i=2; i<rows.length; i++) {
+    const r = rows[i];
+    if (!r[0] || typeof r[0] !== 'string') continue;
+    const total = num(r[22]);
+    if (total > 0) crops.push({ name: r[0].trim(), total, sdp: num(r[24]), dump: num(r[25]), sale: num(r[26]) });
+  }
+  crops.sort((a,b)=>b.total-a.total);
+  const top = crops.slice(0,15);
+
+  const totalProd = crops.reduce((s,c)=>s+c.total,0);
+  const totalSale = crops.reduce((s,c)=>s+c.sale,0);
+  const totalSDP = crops.reduce((s,c)=>s+c.sdp,0);
+
+  // Also check Farming sheet for milk
+  const fRows = getSheet('Farming');
+  let milkFeb = 0, ghee = 0;
+  fRows.forEach(r => {
+    if (r[0] && typeof r[0]==='string' && r[0].includes('Milk')) milkFeb = num(r[3]) || num(r[1]);
+    if (r[0] && typeof r[0]==='string' && r[0].includes('Ghee')) ghee = num(r[3]) || num(r[1]);
+  });
+
+  document.getElementById('farmingKPIs').innerHTML = `
+    <div class="kpi-card" style="--card-accent: #4ade80">
+      <div class="kpi-icon">🥬</div>
+      <div class="kpi-label">Total Vegetables</div>
+      <div class="kpi-value">${fmt(totalProd,1)}</div>
+      <div class="kpi-sub">kg produced</div>
+    </div>
+    <div class="kpi-card" style="--card-accent: #fb923c">
+      <div class="kpi-icon">🛒</div>
+      <div class="kpi-label">For Sale</div>
+      <div class="kpi-value">${fmt(totalSale,1)}</div>
+      <div class="kpi-sub">kg</div>
+    </div>
+    <div class="kpi-card" style="--card-accent: #38bdf8">
+      <div class="kpi-icon">🍽️</div>
+      <div class="kpi-label">To SDP (Kitchen)</div>
+      <div class="kpi-value">${fmt(totalSDP,1)}</div>
+      <div class="kpi-sub">kg</div>
+    </div>
+    <div class="kpi-card" style="--card-accent: #fbbf24">
+      <div class="kpi-icon">🥛</div>
+      <div class="kpi-label">Milk</div>
+      <div class="kpi-value">${fmt(milkFeb)}</div>
+      <div class="kpi-sub">litres · Ghee: ${fmt(ghee,1)} kg</div>
+    </div>
+  `;
+
+  mkChart('chartFarming','bar',
+    top.map(c=>c.name),
+    [
+      { label: 'Total (kg)', data: top.map(c=>c.total), backgroundColor: top.map((_,i)=>COLORS[i%COLORS.length]+'cc'), borderRadius: 6 }
+    ]
+  );
+
+  document.getElementById('farmingTable').innerHTML = mkTable(
+    ['Crop','Total (kg)','To SDP','For Sale','Dump'],
+    crops.map(c=>[c.name, fmt(c.total,1), fmt(c.sdp,1), fmt(c.sale,1), fmt(c.dump,1)])
+  );
+}
+
+// ── FINANCE ────────────────────────────────────
+function buildFinance() {
+  const rows = getSheet('P&L');
+  if (!rows.length) return;
+
+  const income = [], expenses = [];
+  // Col 0,1 = income item, amount; Col 3,4 = expense item, amount
+  rows.slice(3).forEach(r => {
+    if (r[0] && r[1]) income.push({ item: r[0], amt: num(r[1]) });
+    if (r[3] && r[4]) expenses.push({ item: r[3], amt: num(r[4]) });
+  });
+
+  const totalIncome = income.reduce((s,x)=>s+x.amt,0);
+  const totalExpense = expenses.reduce((s,x)=>s+x.amt,0);
+  const profit = totalIncome - totalExpense;
+
+  document.getElementById('financeKPIs').innerHTML = `
+    <div class="kpi-card" style="--card-accent: #4ade80">
+      <div class="kpi-icon">💚</div>
+      <div class="kpi-label">Total Income</div>
+      <div class="kpi-value">₹${fmt(totalIncome)}</div>
+      <div class="kpi-sub">Feb 2026</div>
+    </div>
+    <div class="kpi-card" style="--card-accent: #f87171">
+      <div class="kpi-icon">💸</div>
+      <div class="kpi-label">Total Expenses</div>
+      <div class="kpi-value">₹${fmt(totalExpense)}</div>
+      <div class="kpi-sub">Feb 2026</div>
+    </div>
+    <div class="kpi-card" style="--card-accent: ${profit>=0?'#4ade80':'#f87171'}">
+      <div class="kpi-icon">${profit>=0?'📈':'📉'}</div>
+      <div class="kpi-label">Net P&L</div>
+      <div class="kpi-value">₹${fmt(Math.abs(profit))}</div>
+      <div class="kpi-sub"><span class="kpi-status ${profit>=0?'status-green':'status-red'}">${profit>=0?'Surplus':'Deficit'}</span></div>
+    </div>
+  `;
+
+  mkChart('chartPL','bar',
+    ['Income','Expenses','Net P&L'],
+    [{
+      data: [totalIncome, totalExpense, Math.abs(profit)],
+      backgroundColor: ['rgba(74,222,128,0.8)','rgba(248,113,113,0.8)', profit>=0?'rgba(56,189,248,0.8)':'rgba(251,191,36,0.8)'],
+      borderRadius: 8
+    }]
+  );
+
+  mkChart('chartExpenses','doughnut',
+    expenses.map(e=>e.item),
+    [{ data: expenses.map(e=>e.amt), backgroundColor: COLORS, borderWidth:0 }]
+  );
+
+  document.getElementById('incomeTable').innerHTML = mkTable(['Income Source','Amount (₹)'],
+    income.map(x=>[x.item, '₹'+fmt(x.amt)]));
+  document.getElementById('expenseTable').innerHTML = mkTable(['Expense Item','Amount (₹)'],
+    expenses.map(x=>[x.item, '₹'+fmt(x.amt)]));
+}
+
+// ── OPERATIONS ──────────────────────────────────
+function buildOperations() {
+  // Security
+  const secRows = getSheet('Security Report');
+  let secMetrics = {};
+  secRows.forEach(r => { if (r[1] && r[2]!==null) secMetrics[r[1]] = r[2]; });
+
+  const incidents = num(secMetrics['Incidents/Observations']);
+  const shortage = num(secMetrics['Shortage in mandays']);
+  const training = num(secMetrics['Training Manhours']);
+  const audit = num(secMetrics['Agency Audit']);
+
+  document.getElementById('opsKPIs').innerHTML = `
+    <div class="kpi-card" style="--card-accent: #a78bfa">
+      <div class="kpi-icon">🔒</div>
+      <div class="kpi-label">Security Incidents</div>
+      <div class="kpi-value">${incidents}</div>
+      <div class="kpi-sub"><span class="kpi-status ${incidents===0?'status-green':'status-red'}">${incidents===0?'All Clear':'Review'}</span></div>
+    </div>
+    <div class="kpi-card" style="--card-accent: ${shortage>0?'#f87171':'#4ade80'}">
+      <div class="kpi-icon">👤</div>
+      <div class="kpi-label">Manday Shortage</div>
+      <div class="kpi-value">${shortage}</div>
+      <div class="kpi-sub">days short</div>
+    </div>
+    <div class="kpi-card" style="--card-accent: #38bdf8">
+      <div class="kpi-icon">📚</div>
+      <div class="kpi-label">Training Hours</div>
+      <div class="kpi-value">${training}</div>
+      <div class="kpi-sub">manhours</div>
+    </div>
+    <div class="kpi-card" style="--card-accent: #fbbf24">
+      <div class="kpi-icon">✅</div>
+      <div class="kpi-label">Agency Audit</div>
+      <div class="kpi-value">${audit || '—'}</div>
+      <div class="kpi-sub">audits this period</div>
+    </div>
+  `;
+
+  document.getElementById('securityDetail').innerHTML = `
+    <div class="meter-grid">
+      ${Object.entries(secMetrics).map(([k,v])=>`
+        <div class="meter-item">
+          <div class="meter-value" style="font-size:24px;color:${v===0?'#4ade80':'#fbbf24'}">${v===0?'✓':v}</div>
+          <div class="meter-label">${k}</div>
+        </div>`).join('')}
+    </div>
+  `;
+
+  // Critical Equipment
+  const eqRows = getSheet('Critical Equipment');
+  const equipData = eqRows.filter(r=>r.some(v=>v!==null)).slice(0,20);
+  if (equipData.length > 1) {
+    const header = equipData[0].filter(v=>v!==null);
+    document.getElementById('equipTable').innerHTML = mkTable(header.slice(0,6),
+      equipData.slice(1).map(r=>r.filter((_,i)=>i<6)));
+  } else {
+    document.getElementById('equipTable').innerHTML = '<p style="padding:16px;color:var(--muted)">Equipment data available in sheet.</p>';
+  }
+
+  // AMC
+  const amcRows = getSheet('AMC');
+  const amcData = amcRows.filter(r=>r[0]&&r[1]).slice(0,15);
+  if (amcData.length > 1) {
+    document.getElementById('amcTable').innerHTML = mkTable(['Asset','Vendor','Category','Location','Start','End','Status'],
+      amcData.slice(1).map(r=>[r[0],r[1],r[2],r[5],r[6]&&r[6].toLocaleDateString?r[6].toLocaleDateString('en-IN'):(r[6]||'—'),r[7]&&r[7].toLocaleDateString?r[7].toLocaleDateString('en-IN'):(r[7]||'—'),r[8]]));
+  } else {
+    document.getElementById('amcTable').innerHTML = '<p style="padding:16px;color:var(--muted)">AMC data available — check sheet formatting.</p>';
+  }
+}
+
+// ── OVERVIEW ────────────────────────────────────
+function buildOverview() {
+  // Pull KPIs from already-rendered data
+  const ebRows = getSheet('EB');
+  const watRows = getSheet('Water Consumption');
+  const mpRows = getSheet('Manpower');
+  const occRows = getSheet('Occupancy');
+
+  let solarFeb=0, ebTotal=0, waterTotal=0, occupied=0, totalVillas=0, totalStaff=0;
+  ebRows.slice(1).forEach(r=>{
+    if(r[0]==='Solar Units KWH') solarFeb=num(r[2]);
+    else ebTotal += num(r[2]);
+  });
+  watRows.slice(1).forEach(r=>{ waterTotal+=num(r[2]); });
+  mpRows.forEach(r=>{ if(r[1]&&r[6]) totalStaff+=num(r[6]); });
+  occRows.filter(r=>typeof r[0]==='number').forEach(r=>{ totalVillas+=num(r[2]); occupied+=num(r[4]); });
+
+  document.getElementById('overviewKPIs').innerHTML = `
+    <div class="kpi-card" style="--card-accent: #fbbf24">
+      <div class="kpi-icon">☀️</div>
+      <div class="kpi-label">Solar Generation (Feb)</div>
+      <div class="kpi-value">${fmt(solarFeb)}</div>
+      <div class="kpi-sub">kWh</div>
+    </div>
+    <div class="kpi-card" style="--card-accent: #38bdf8">
+      <div class="kpi-icon">💧</div>
+      <div class="kpi-label">Water Consumed (Feb)</div>
+      <div class="kpi-value">${fmt(waterTotal)}</div>
+      <div class="kpi-sub">KL</div>
+    </div>
+    <div class="kpi-card" style="--card-accent: #4ade80">
+      <div class="kpi-icon">🏠</div>
+      <div class="kpi-label">Occupancy</div>
+      <div class="kpi-value">${occupied}/${totalVillas}</div>
+      <div class="kpi-sub">${totalVillas>0?((occupied/totalVillas)*100).toFixed(0):0}% occupied</div>
+    </div>
+    <div class="kpi-card" style="--card-accent: #a78bfa">
+      <div class="kpi-icon">👥</div>
+      <div class="kpi-label">Total Staff (Feb)</div>
+      <div class="kpi-value">${totalStaff}</div>
+      <div class="kpi-sub">across departments</div>
+    </div>
+  `;
+
+  // Overview charts
+  const ebData = {};
+  ebRows.slice(1).forEach(r=>{ if(r[0]) ebData[r[0]]={jan:num(r[1]),feb:num(r[2])}; });
+  mkChart('chartEnergyOverview','bar',
+    ["Jan'26","Feb'26"],
+    [
+      { label: 'Solar kWh', data: [ebData['Solar Units KWH']?.jan||0, ebData['Solar Units KWH']?.feb||0], backgroundColor:'rgba(251,191,36,0.8)', borderRadius:6 },
+      { label: 'Grid kWh', data: [
+        (ebData['Residents KWH']?.jan||0)+(ebData['Clubhouse KWH (RH)']?.jan||0)+(ebData['All Common Areas KWH']?.jan||0),
+        (ebData['Residents KWH']?.feb||0)+(ebData['Clubhouse KWH (RH)']?.feb||0)+(ebData['All Common Areas KWH']?.feb||0)
+      ], backgroundColor:'rgba(248,113,113,0.7)', borderRadius:6 }
+    ]
+  );
+
+  const watData = watRows.slice(1).filter(r=>r[0]&&(num(r[1])||num(r[2])));
+  mkChart('chartWaterOverview','bar',
+    watData.map(r=>r[0].replace(' in KL','')),
+    [
+      { label: 'Jan', data: watData.map(r=>num(r[1])), backgroundColor:'rgba(56,189,248,0.6)', borderRadius:6 },
+      { label: 'Feb', data: watData.map(r=>num(r[2])), backgroundColor:'rgba(74,222,128,0.7)', borderRadius:6 }
+    ]
+  );
+}
+
+// ── TABS ────────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+</script>
+</body>
+</html>
